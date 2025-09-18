@@ -28,6 +28,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('movimentacoes') }}">Movimentações</a>
                     </li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('usuarios') }}">Usuários</a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
