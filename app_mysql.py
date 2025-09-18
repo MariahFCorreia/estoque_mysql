@@ -127,6 +127,10 @@ def load_user(user_id):
         print(f"Erro ao carregar usuário: {e}")
     return None
 
+# Função para verificar se o usuário atual é administrador
+def is_admin():
+    return current_user.is_authenticated and current_user.role == 'admin'
+
 # Rotas de autenticação (mantidas iguais)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -284,6 +288,146 @@ def movimentacoes():
     except Exception as e:
         flash(f'Erro ao carregar movimentações: {str(e)}', 'danger')
         return render_template('movimentacoes.html', movimentacoes=[])
+
+# Gestão de Usuários (Apenas para administradores)
+@app.route('/usuarios')
+@login_required
+def usuarios():
+    if not is_admin():
+        flash('Acesso negado! Apenas administradores podem gerenciar usuários.', 'danger')
+        return redirect(url_for('index'))
+    
+    try:
+        usuarios = execute_query('SELECT id, username, role, nome, email, data_cadastro FROM usuarios ORDER BY nome')
+        return render_template('usuarios.html', usuarios=usuarios)
+    except Exception as e:
+        flash(f'Erro ao carregar usuários: {str(e)}', 'danger')
+        return render_template('usuarios.html', usuarios=[])
+
+@app.route('/usuarios/novo', methods=['GET', 'POST'])
+@login_required
+def novo_usuario():
+    if not is_admin():
+        flash('Acesso negado! Apenas administradores podem criar usuários.', 'danger')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        try:
+            username = request.form['username']
+            nome = request.form['nome']
+            email = request.form['email']
+            senha = request.form['senha']
+            confirmar_senha = request.form['confirmar_senha']
+            role = request.form['role']
+            
+            # Verificar se as senhas coincidem
+            if senha != confirmar_senha:
+                flash('As senhas não coincidem!', 'danger')
+                return render_template('novo_usuario.html')
+            
+            # Verificar se o usuário já existe
+            existing = execute_query('SELECT id FROM usuarios WHERE username = %s', (username,))
+            if existing:
+                flash('Erro: Nome de usuário já existe!', 'danger')
+                return render_template('novo_usuario.html')
+            
+            # Criar hash da senha
+            password_hash = generate_password_hash(senha)
+            
+            # Inserir novo usuário
+            execute_query('''
+            INSERT INTO usuarios (username, password_hash, role, nome, email, data_cadastro)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (username, password_hash, role, nome, email, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            
+            flash('Usuário criado com sucesso!', 'success')
+            return redirect(url_for('usuarios'))
+            
+        except Exception as e:
+            flash(f'Erro ao criar usuário: {str(e)}', 'danger')
+    
+    return render_template('novo_usuario.html')
+
+@app.route('/usuarios/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_usuario(id):
+    if not is_admin():
+        flash('Acesso negado! Apenas administradores podem editar usuários.', 'danger')
+        return redirect(url_for('index'))
+    
+    try:
+        usuario = execute_query('SELECT id, username, role, nome, email FROM usuarios WHERE id = %s', (id,))
+        if not usuario:
+            flash('Usuário não encontrado!', 'danger')
+            return redirect(url_for('usuarios'))
+        
+        if request.method == 'POST':
+            username = request.form['username']
+            nome = request.form['nome']
+            email = request.form['email']
+            role = request.form['role']
+            senha = request.form.get('senha')
+            
+            # Verificar se o username já existe (excluindo o usuário atual)
+            existing = execute_query('SELECT id FROM usuarios WHERE username = %s AND id != %s', (username, id))
+            if existing:
+                flash('Erro: Nome de usuário já existe!', 'danger')
+                return render_template('editar_usuario.html', usuario=usuario[0])
+            
+            # Atualizar usuário
+            if senha:
+                # Se foi fornecida uma nova senha, atualizar a senha
+                password_hash = generate_password_hash(senha)
+                execute_query('''
+                UPDATE usuarios 
+                SET username = %s, nome = %s, email = %s, role = %s, password_hash = %s 
+                WHERE id = %s
+                ''', (username, nome, email, role, password_hash, id))
+            else:
+                # Se não foi fornecida uma nova senha, manter a senha atual
+                execute_query('''
+                UPDATE usuarios 
+                SET username = %s, nome = %s, email = %s, role = %s 
+                WHERE id = %s
+                ''', (username, nome, email, role, id))
+            
+            flash('Usuário atualizado com sucesso!', 'success')
+            return redirect(url_for('usuarios'))
+        
+        return render_template('editar_usuario.html', usuario=usuario[0])
+        
+    except Exception as e:
+        flash(f'Erro ao editar usuário: {str(e)}', 'danger')
+        return redirect(url_for('usuarios'))
+
+@app.route('/usuarios/excluir/<int:id>')
+@login_required
+def excluir_usuario(id):
+    if not is_admin():
+        flash('Acesso negado! Apenas administradores podem excluir usuários.', 'danger')
+        return redirect(url_for('index'))
+    
+    try:
+        # Não permitir que o administrador exclua a si mesmo
+        if id == current_user.id:
+            flash('Você não pode excluir sua própria conta!', 'danger')
+            return redirect(url_for('usuarios'))
+        
+        # Verificar se o usuário existe
+        usuario = execute_query('SELECT id FROM usuarios WHERE id = %s', (id,))
+        if not usuario:
+            flash('Usuário não encontrado!', 'danger')
+            return redirect(url_for('usuarios'))
+        
+        # Excluir usuário
+        execute_query('DELETE FROM usuarios WHERE id = %s', (id,))
+        
+        flash('Usuário excluído com sucesso!', 'success')
+        return redirect(url_for('usuarios'))
+        
+    except Exception as e:
+        flash(f'Erro ao excluir usuário: {str(e)}', 'danger')
+        return redirect(url_for('usuarios'))
 
 @app.route('/api/produtos')
 @login_required
