@@ -31,6 +31,7 @@ class User(UserMixin):
 def init_db():
     try:
         # Criar database se não existir
+        from database_mysql import create_database_if_not_exists
         create_database_if_not_exists()
         
         # Criar tabela de usuários
@@ -115,7 +116,7 @@ def init_db():
     except Exception as e:
         print(f"❌ Erro ao inicializar banco de dados MySQL: {e}")
         raise
-
+    
 # Callback para carregar o usuário
 @login_manager.user_loader
 def load_user(user_id):
