@@ -84,6 +84,21 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
+        # Criar tabela de licenças ativas
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS licencas_ativas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            chave_licenca VARCHAR(255) UNIQUE NOT NULL,
+            data_ativacao DATETIME NOT NULL,
+            usuario_id INT NULL,
+            ativa BOOLEAN DEFAULT TRUE,
+            ultima_verificacao DATETIME NULL,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+            INDEX idx_chave_licenca (chave_licenca),
+            INDEX idx_data_ativacao (data_ativacao)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+        
         # Inserir usuário admin padrão se não existir
         usuarios = execute_query('SELECT COUNT(*) as count FROM usuarios WHERE username = "admin"')
         if usuarios and usuarios[0]['count'] == 0:
@@ -116,6 +131,24 @@ def init_db():
     except Exception as e:
         print(f"❌ Erro ao inicializar banco de dados MySQL: {e}")
         raise
+
+# Importar e registrar blueprint de licenças
+try:
+    from licenca_routes import licenca_bp, verificar_licenca_middleware
+    app.register_blueprint(licenca_bp)
+    print("✅ Sistema de licenças registrado com sucesso!")
+except ImportError as e:
+    print(f"⚠️ Sistema de licenças não disponível: {e}")
+
+# Middleware de verificação de licença (opcional - descomente se quiser obrigatório)
+# @app.before_request
+# def verificar_licenca_global():
+#     try:
+#         from licenca_routes import verificar_licenca_middleware
+#         return verificar_licenca_middleware()
+#     except Exception as e:
+#         print(f"⚠️ Middleware de licença não disponível: {e}")
+#         return None
     
 # Callback para carregar o usuário
 @login_manager.user_loader
@@ -593,6 +626,26 @@ def api_produto(id):
             return jsonify({'error': 'Produto não encontrado'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Rota para gerenciamento de licenças (apenas admin)
+@app.route('/admin/licencas')
+@login_required
+def admin_licencas():
+    if not is_admin():
+        flash('Acesso negado! Apenas administradores podem gerenciar licenças.', 'danger')
+        return redirect(url_for('index'))
+    
+    try:
+        from licenca_config import gerenciador_licencas
+        licencas = gerenciador_licencas.listar_licencas()
+        estatisticas = gerenciador_licencas.estatisticas()
+        
+        return render_template('admin_licencas.html', 
+                             licencas=licencas,
+                             estatisticas=estatisticas)
+    except Exception as e:
+        flash(f'❌ Erro ao carregar licenças: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     init_db()

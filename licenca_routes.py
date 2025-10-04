@@ -4,14 +4,23 @@ from flask_login import login_required, current_user
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from licenca_config import gerenciador_licencas
-from datetime import datetime
-import json
+
+try:
+    from licenca_config import gerenciador_licencas
+    from datetime import datetime
+    import json
+except ImportError as e:
+    print(f"⚠️ Módulos de licença não disponíveis: {e}")
+    gerenciador_licencas = None
 
 licenca_bp = Blueprint('licenca', __name__)
 
 @licenca_bp.route('/licenca/ativar', methods=['GET', 'POST'])
 def ativar_licenca():
+    if not gerenciador_licencas:
+        flash('❌ Sistema de licenças não disponível no momento', 'danger')
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
         chave_licenca = request.form.get('chave_licenca', '').strip()
         
@@ -26,10 +35,28 @@ def ativar_licenca():
             # Salvar licença ativada no banco de dados
             try:
                 from database_mysql import execute_query
-                execute_query(
-                    "INSERT INTO licencas_ativas (chave_licenca, data_ativacao, usuario_id) VALUES (%s, %s, %s)",
-                    (chave_licenca, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), current_user.id if current_user.is_authenticated else None)
+                
+                # Verificar se já existe uma licença ativa
+                licenca_existente = execute_query(
+                    "SELECT * FROM licencas_ativas WHERE ativa = TRUE LIMIT 1"
                 )
+                
+                if licenca_existente:
+                    # Atualizar licença existente
+                    execute_query(
+                        "UPDATE licencas_ativas SET chave_licenca = %s, data_ativacao = %s, usuario_id = %s, ultima_verificacao = %s WHERE ativa = TRUE",
+                        (chave_licenca, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
+                         current_user.id if current_user.is_authenticated else None,
+                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    )
+                else:
+                    # Inserir nova licença ativa
+                    execute_query(
+                        "INSERT INTO licencas_ativas (chave_licenca, data_ativacao, usuario_id, ultima_verificacao) VALUES (%s, %s, %s, %s)",
+                        (chave_licenca, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
+                         current_user.id if current_user.is_authenticated else None,
+                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    )
                 
                 flash('✅ Licença ativada com sucesso! Sistema liberado.', 'success')
                 return render_template('licenca_sucesso.html', 
@@ -50,12 +77,18 @@ def verificar_licenca():
         
         # Verificar se há licença ativa
         licenca_ativa = execute_query(
-            "SELECT * FROM licencas_ativas ORDER BY data_ativacao DESC LIMIT 1"
+            "SELECT * FROM licencas_ativas WHERE ativa = TRUE ORDER BY data_ativacao DESC LIMIT 1"
         )
         
-        if licenca_ativa:
+        if licenca_ativa and gerenciador_licencas:
             chave_licenca = licenca_ativa[0]['chave_licenca']
             valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
+            
+            # Atualizar última verificação
+            execute_query(
+                "UPDATE licencas_ativas SET ultima_verificacao = %s WHERE id = %s",
+                (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), licenca_ativa[0]['id'])
+            )
             
             return jsonify({
                 'valida': valida,
@@ -72,6 +105,10 @@ def verificar_licenca():
 def admin_licencas():
     if not current_user.is_authenticated or current_user.role != 'admin':
         flash('❌ Acesso restrito a administradores', 'danger')
+        return redirect(url_for('index'))
+    
+    if not gerenciador_licencas:
+        flash('❌ Sistema de licenças não disponível', 'danger')
         return redirect(url_for('index'))
     
     try:
@@ -91,6 +128,9 @@ def admin_gerar_licenca():
     if not current_user.is_authenticated or current_user.role != 'admin':
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
+    if not gerenciador_licencas:
+        return jsonify({'success': False, 'message': 'Sistema de licenças não disponível'})
+    
     try:
         data = request.get_json()
         cliente = data.get('cliente')
@@ -99,6 +139,9 @@ def admin_gerar_licenca():
         dias = int(data.get('dias', 365))
         tipo = data.get('tipo', 'standard')
         valor = float(data.get('valor', 0))
+        
+        if not cliente or not email:
+            return jsonify({'success': False, 'message': 'Cliente e email são obrigatórios'})
         
         chave, expiracao = gerenciador_licencas.gerar_licenca(
             cliente, email, cnpj, dias, tipo, valor
@@ -117,6 +160,56 @@ def admin_gerar_licenca():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Erro: {str(e)}'})
 
+@licenca_bp.route('/admin/licenca/desativar/<string:chave>')
+@login_required
+def admin_desativar_licenca(chave):
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    if not gerenciador_licencas:
+        return jsonify({'success': False, 'message': 'Sistema de licenças não disponível'})
+    
+    try:
+        success = gerenciador_licencas.desativar_licenca(chave)
+        if success:
+            return jsonify({'success': True, 'message': 'Licença desativada com sucesso'})
+        else:
+            return jsonify({'success': False, 'message': 'Licença não encontrada'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erro: {str(e)}'})
+
+@licenca_bp.route('/licenca/status')
+@login_required
+def status_licenca():
+    """Página de status da licença atual"""
+    try:
+        from database_mysql import execute_query
+        
+        licenca_ativa = execute_query(
+            "SELECT * FROM licencas_ativas WHERE ativa = TRUE ORDER BY data_ativacao DESC LIMIT 1"
+        )
+        
+        status_info = {
+            'ativa': False,
+            'mensagem': 'Nenhuma licença ativa',
+            'detalhes': None
+        }
+        
+        if licenca_ativa and gerenciador_licencas:
+            chave_licenca = licenca_ativa[0]['chave_licenca']
+            valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
+            
+            status_info = {
+                'ativa': valida,
+                'mensagem': mensagem,
+                'detalhes': licenca_ativa[0]
+            }
+        
+        return render_template('status_licenca.html', status=status_info)
+    except Exception as e:
+        flash(f'❌ Erro ao verificar status da licença: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
 # Middleware de verificação de licença
 def verificar_licenca_middleware():
     """Middleware para verificar licença em todas as rotas"""
@@ -126,34 +219,43 @@ def verificar_licenca_middleware():
     rotas_publicas = [
         'licenca.ativar_licenca',
         'licenca.verificar_licenca', 
+        'licenca.status_licenca',
         'login',
-        'static',
-        'licenca.licenca_sucesso'
+        'logout',
+        'static'
     ]
     
     if request.endpoint in rotas_publicas:
-        return
+        return None
     
     try:
         from database_mysql import execute_query
-        from licenca_config import gerenciador_licencas
         
         # Verificar se há licença ativa
         licenca_ativa = execute_query(
-            "SELECT * FROM licencas_ativas ORDER BY data_ativacao DESC LIMIT 1"
+            "SELECT * FROM licencas_ativas WHERE ativa = TRUE ORDER BY data_ativacao DESC LIMIT 1"
         )
         
         if not licenca_ativa:
-            return redirect(url_for('licenca.ativar_licenca'))
+            # Redirecionar para ativação se não houver licença
+            if request.endpoint != 'licenca.ativar_licenca':
+                flash('❌ Sistema requer ativação de licença', 'warning')
+                return redirect(url_for('licenca.ativar_licenca'))
+            return None
         
-        # Verificar validade da licença
-        chave_licenca = licenca_ativa[0]['chave_licenca']
-        valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
-        
-        if not valida:
-            flash(f'❌ Licença inválida: {mensagem}', 'danger')
-            return redirect(url_for('licenca.ativar_licenca'))
+        # Verificar validade da licença se o gerenciador estiver disponível
+        if gerenciador_licencas:
+            chave_licenca = licenca_ativa[0]['chave_licenca']
+            valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
             
+            if not valida:
+                if request.endpoint != 'licenca.ativar_licenca':
+                    flash(f'❌ Licença inválida: {mensagem}', 'danger')
+                    return redirect(url_for('licenca.ativar_licenca'))
+                    
     except Exception as e:
-        flash(f'❌ Erro na verificação de licença: {str(e)}', 'danger')
-        return redirect(url_for('licenca.ativar_licenca'))
+        print(f"⚠️ Erro no middleware de licença: {e}")
+        # Em caso de erro, permitir o acesso para não bloquear o sistema
+        return None
+    
+    return None
