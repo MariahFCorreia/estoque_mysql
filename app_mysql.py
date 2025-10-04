@@ -132,7 +132,7 @@ def load_user(user_id):
 def is_admin():
     return current_user.is_authenticated and current_user.role == 'admin'
 
-# Rotas de autenticação (mantidas iguais)
+# Rotas de autenticação
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -195,7 +195,7 @@ def alterar_senha():
     
     return render_template('alterar_senha.html')
 
-# Rotas principais (adaptadas para MySQL)
+# Rotas principais
 @app.route('/')
 @login_required
 def index():
@@ -218,8 +218,6 @@ def index():
     except Exception as e:
         flash(f'Erro ao carregar página inicial: {str(e)}', 'danger')
         return render_template('index.html', produtos=[], valor_total=0, produtos_baixo_estoque=[])
-
-# ... (todas as outras rotas mantidas com a mesma lógica, apenas trocando ? por %s)
 
 @app.route('/adicionar', methods=['GET', 'POST'])
 @login_required
@@ -271,18 +269,163 @@ def adicionar_produto():
     
     return render_template('adicionar_produto.html', categorias=categorias)
 
-# ... (as demais rotas seguem o mesmo padrão, substituindo ? por %s)
+@app.route('/produto/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_produto(id):
+    try:
+        produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
+        if not produto:
+            flash('Produto não encontrado!', 'danger')
+            return redirect(url_for('index'))
+        
+        if request.method == 'POST':
+            codigo = int(request.form['codigo'])
+            descricao = request.form['descricao']
+            categoria = request.form['categoria']
+            preco_unitario = float(request.form['preco_unitario'])
+            fornecedor = request.form['fornecedor']
+            estoque_minimo = int(request.form['estoque_minimo'])
+            data_validade = request.form['data_validade'] or None
+            lote = request.form['lote'] or None
+            
+            # Verificar se código já existe (excluindo o produto atual)
+            existing = execute_query('SELECT id FROM produtos WHERE codigo = %s AND id != %s', (codigo, id))
+            if existing:
+                flash('Erro: Código do produto já existe!', 'danger')
+                return redirect(url_for('editar_produto', id=id))
+            
+            execute_query('''
+            UPDATE produtos 
+            SET codigo = %s, descricao = %s, categoria = %s, preco_unitario = %s, 
+                fornecedor = %s, estoque_minimo = %s, data_validade = %s, lote = %s
+            WHERE id = %s
+            ''', (codigo, descricao, categoria, preco_unitario, fornecedor, 
+                  estoque_minimo, data_validade, lote, id))
+            
+            flash('Produto atualizado com sucesso!', 'success')
+            return redirect(url_for('index'))
+        
+        categorias = ['CIMENTO', 'AGREGADOS', 'CERÂMICOS', 'FERRO_E_ACO', 'MADEIRAS', 
+                     'TINTAS', 'HIDRAULICA', 'ELETRICA', 'FERRAMENTAS', 'OUTROS']
+        
+        return render_template('editar_produto.html', produto=produto[0], categorias=categorias)
+        
+    except Exception as e:
+        flash(f'Erro ao editar produto: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/produto/entrada/<int:id>', methods=['GET', 'POST'])
+@login_required
+def entrada_estoque(id):
+    try:
+        produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
+        if not produto:
+            flash('Produto não encontrado!', 'danger')
+            return redirect(url_for('index'))
+        
+        if request.method == 'POST':
+            quantidade = int(request.form['quantidade'])
+            observacao = request.form.get('observacao', '')
+            
+            # Atualizar estoque
+            execute_query('''
+            UPDATE produtos SET quantidade = quantidade + %s WHERE id = %s
+            ''', (quantidade, id))
+            
+            # Registrar movimentação
+            execute_query('''
+            INSERT INTO movimentacoes (produto_id, tipo, quantidade, data, observacao, usuario_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (id, 'ENTRADA', quantidade, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
+                  observacao, current_user.id))
+            
+            flash(f'Entrada de {quantidade} unidades registrada com sucesso!', 'success')
+            return redirect(url_for('index'))
+        
+        return render_template('entrada_estoque.html', produto=produto[0])
+        
+    except Exception as e:
+        flash(f'Erro ao registrar entrada: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/produto/saida/<int:id>', methods=['GET', 'POST'])
+@login_required
+def saida_estoque(id):
+    try:
+        produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
+        if not produto:
+            flash('Produto não encontrado!', 'danger')
+            return redirect(url_for('index'))
+        
+        if request.method == 'POST':
+            quantidade = int(request.form['quantidade'])
+            observacao = request.form.get('observacao', '')
+            
+            # Verificar se há estoque suficiente
+            if produto[0]['quantidade'] < quantidade:
+                flash('Estoque insuficiente!', 'danger')
+                return render_template('saida_estoque.html', produto=produto[0])
+            
+            # Atualizar estoque
+            execute_query('''
+            UPDATE produtos SET quantidade = quantidade - %s WHERE id = %s
+            ''', (quantidade, id))
+            
+            # Registrar movimentação
+            execute_query('''
+            INSERT INTO movimentacoes (produto_id, tipo, quantidade, data, observacao, usuario_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (id, 'SAIDA', quantidade, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
+                  observacao, current_user.id))
+            
+            flash(f'Saída de {quantidade} unidades registrada com sucesso!', 'success')
+            return redirect(url_for('index'))
+        
+        return render_template('saida_estoque.html', produto=produto[0])
+        
+    except Exception as e:
+        flash(f'Erro ao registrar saída: {str(e)}', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/produto/excluir/<int:id>')
+@login_required
+def excluir_produto(id):
+    try:
+        # Verificar se o produto existe
+        produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
+        if not produto:
+            flash('Produto não encontrado!', 'danger')
+            return redirect(url_for('index'))
+        
+        # Excluir produto (as movimentações serão excluídas em cascata devido à FOREIGN KEY)
+        execute_query('DELETE FROM produtos WHERE id = %s', (id,))
+        
+        flash('Produto excluído com sucesso!', 'success')
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        flash(f'Erro ao excluir produto: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/movimentacoes')
 @login_required
 def movimentacoes():
     try:
         movimentacoes = execute_query('''
-        SELECT m.*, p.descricao as produto_descricao, u.username as usuario
+        SELECT 
+            m.id,
+            m.tipo,
+            m.quantidade,
+            m.data,
+            m.observacao,
+            p.descricao as produto_descricao,
+            p.codigo as produto_codigo,
+            u.username as usuario_nome
         FROM movimentacoes m 
-        JOIN produtos p ON m.produto_id = p.id 
+        LEFT JOIN produtos p ON m.produto_id = p.id 
         LEFT JOIN usuarios u ON m.usuario_id = u.id
         ORDER BY m.data DESC
+        LIMIT 1000
         ''')
         
         return render_template('movimentacoes.html', movimentacoes=movimentacoes)
