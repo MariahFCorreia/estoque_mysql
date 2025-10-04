@@ -35,11 +35,11 @@ def get_db_connection():
             autocommit=False
         )
         
-        logger.info("Conexão MySQL estabelecida com sucesso")
+        logger.info("✅ Conexão MySQL estabelecida com sucesso")
         return connection
         
     except Error as e:
-        logger.error(f"Erro ao conectar com MySQL: {e}")
+        logger.error(f"❌ Erro ao conectar com MySQL: {e}")
         raise
 
 def execute_query(query, params=None):
@@ -70,7 +70,12 @@ def execute_query(query, params=None):
     except Error as e:
         if connection:
             connection.rollback()
-        logger.error(f"Erro na query: {e}")
+        logger.error(f"❌ Erro na query: {e} - Query: {query}")
+        raise
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        logger.error(f"❌ Erro geral na query: {e}")
         raise
     finally:
         if cursor:
@@ -115,11 +120,11 @@ def create_database_if_not_exists():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         cursor.execute(f"USE {database}")
         
-        logger.info(f"Database {database} verificado/criado com sucesso")
+        logger.info(f"✅ Database {database} verificado/criado com sucesso")
         return True
         
     except Error as e:
-        logger.error(f"Erro ao criar database: {e}")
+        logger.error(f"❌ Erro ao criar database: {e}")
         return False
     finally:
         if 'temp_conn' in locals() and temp_conn.is_connected():
