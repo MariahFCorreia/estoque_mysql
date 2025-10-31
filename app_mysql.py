@@ -44,6 +44,8 @@ def init_db():
             nome VARCHAR(100) NOT NULL,
             email VARCHAR(120),
             data_cadastro DATETIME NOT NULL,
+            ultima_recuperacao DATETIME NULL,
+            tentativas_recuperacao INT DEFAULT 0,
             INDEX idx_username (username)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
@@ -62,6 +64,11 @@ def init_db():
             data_validade DATE NULL,
             lote VARCHAR(50) NULL,
             data_cadastro DATETIME NOT NULL,
+            ncm VARCHAR(10),
+            cest VARCHAR(10),
+            cfop_venda VARCHAR(10) DEFAULT '5102',
+            unidade_tributaria VARCHAR(10) DEFAULT 'UN',
+            origem_mercadoria INT DEFAULT 0,
             INDEX idx_codigo (codigo),
             INDEX idx_categoria (categoria)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -99,6 +106,57 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
+        # Criar tabela de tokens de recuperação de senha
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS recuperacao_senha (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            token VARCHAR(100) UNIQUE NOT NULL,
+            data_criacao DATETIME NOT NULL,
+            data_expiracao DATETIME NOT NULL,
+            utilizado BOOLEAN DEFAULT FALSE,
+            ip_solicitacao VARCHAR(45),
+            INDEX idx_token (token),
+            INDEX idx_expiracao (data_expiracao),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ''')
+        
+        # Tabela de referências NF-e
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS nfe_referencias (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            venda_id INT NOT NULL,
+            referencia_focus VARCHAR(255) NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            chave_acesso VARCHAR(50),
+            numero_nfe VARCHAR(50),
+            serie_nfe VARCHAR(10),
+            data_criacao DATETIME NOT NULL,
+            data_autorizacao DATETIME,
+            xml_content LONGTEXT,
+            pdf_content LONGBLOB,
+            erro_mensagem TEXT,
+            INDEX idx_referencia (referencia_focus),
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ''')
+        
+        # Tabela de configurações fiscais
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS nfe_configuracoes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            empresa_id INT NOT NULL,
+            certificado_digital LONGBLOB,
+            senha_certificado VARCHAR(255),
+            ambiente VARCHAR(20) DEFAULT 'homologacao',
+            token_api VARCHAR(255),
+            sequencia_numeracao INT DEFAULT 1,
+            serie_nfe VARCHAR(3) DEFAULT '1',
+            data_atualizacao DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ''')
+        
         # Inserir usuário admin padrão se não existir
         usuarios = execute_query('SELECT COUNT(*) as count FROM usuarios WHERE username = "admin"')
         if usuarios and usuarios[0]['count'] == 0:
@@ -132,13 +190,20 @@ def init_db():
         print(f"❌ Erro ao inicializar banco de dados MySQL: {e}")
         raise
 
-# Importar e registrar blueprint de licenças
+# Importar e registrar blueprints
 try:
-    from licenca_routes import licenca_bp, verificar_licenca_middleware
+    from licenca_routes import licenca_bp
     app.register_blueprint(licenca_bp)
     print("✅ Sistema de licenças registrado com sucesso!")
 except ImportError as e:
     print(f"⚠️ Sistema de licenças não disponível: {e}")
+
+try:
+    from routes.recuperacao_routes import recuperacao_bp
+    app.register_blueprint(recuperacao_bp)
+    print("✅ Sistema de recuperação de senha registrado com sucesso!")
+except ImportError as e:
+    print(f"⚠️ Sistema de recuperação de senha não disponível: {e}")
 
 # Middleware de verificação de licença (opcional - descomente se quiser obrigatório)
 # @app.before_request
