@@ -1,0 +1,223 @@
+{% extends "vendas/base_vendas.html" %}
+
+{% block content_vendas %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2 me-2"></i>Dashboard de Vendas</h2>
+    <div class="text-end">
+        <span class="badge bg-success fs-6">Vendedor</span>
+    </div>
+</div>
+
+<!-- Métricas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Vendas Hoje</h5>
+                        <h3 class="text-success">{{ vendas_hoje.total }}</h3>
+                    </div>
+                    <i class="bi bi-cart-check display-6 text-success opacity-25"></i>
+                </div>
+                <small class="text-muted">Total: R$ {{ "%.2f"|format(vendas_hoje.valor_total) }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Ticket Médio</h5>
+                        <h3 class="text-primary">R$ {{ "%.2f"|format(vendas_hoje.valor_total / vendas_hoje.total if vendas_hoje.total > 0 else 0) }}</h3>
+                    </div>
+                    <i class="bi bi-currency-dollar display-6 text-primary opacity-25"></i>
+                </div>
+                <small class="text-muted">Por venda</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Produtos</h5>
+                        <h3 class="text-info">{{ total_produtos }}</h3>
+                    </div>
+                    <i class="bi bi-box-seam display-6 text-info opacity-25"></i>
+                </div>
+                <small class="text-muted">Disponíveis</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Ações</h5>
+                        <a href="{{ url_for('vendas.venda_rapida') }}" class="btn btn-vendas btn-sm">
+                            <i class="bi bi-cart-plus"></i> Nova Venda
+                        </a>
+                    </div>
+                    <i class="bi bi-lightning display-6 text-warning opacity-25"></i>
+                </div>
+                <small class="text-muted">Venda rápida</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Venda Rápida Integrada -->
+<div class="card card-venda">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-search me-2"></i>Busca Rápida de Produtos</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" 
+                           placeholder="Digite código, nome ou descrição do produto..." 
+                           id="buscaVenda">
+                </div>
+                <div id="resultadosVenda" class="mt-3"></div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid gap-2 h-100">
+                    <a href="{{ url_for('vendas.venda_rapida') }}" class="btn btn-vendas btn-lg h-100 d-flex flex-column justify-content-center">
+                        <i class="bi bi-cart-plus display-6 mb-2"></i>
+                        <span>Venda Completa</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vendas Recentes -->
+<div class="card card-venda mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Suas Vendas Recentes</h5>
+    </div>
+    <div class="card-body">
+        {% if vendas_recentes %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Cliente</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venda in vendas_recentes %}
+                    <tr>
+                        <td>{{ venda.data_venda.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ venda.cliente_nome }}</td>
+                        <td>R$ {{ "%.2f"|format(venda.valor_total) }}</td>
+                        <td><span class="badge bg-success">{{ venda.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-cart-x display-1 text-muted"></i>
+            <p class="text-muted mt-3">Nenhuma venda realizada hoje.</p>
+            <a href="{{ url_for('vendas.venda_rapida') }}" class="btn btn-vendas">
+                <i class="bi bi-cart-plus"></i> Fazer Primeira Venda
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_vendas %}
+<script>
+// Busca rápida de produtos no dashboard
+document.getElementById('buscaVenda').addEventListener('input', function() {
+    const query = this.value.trim();
+    const resultados = document.getElementById('resultadosVenda');
+    
+    if (query.length < 2) {
+        resultados.innerHTML = '';
+        return;
+    }
+    
+    // Loading
+    resultados.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Buscando...</span>
+            </div>
+            <p class="text-muted mt-2">Buscando produtos...</p>
+        </div>
+    `;
+    
+    fetch(`/api/produtos-venda?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(produtos => {
+            if (produtos.length === 0) {
+                resultados.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Nenhum produto encontrado para "${query}"
+                    </div>
+                `;
+                return;
+            }
+            
+            resultados.innerHTML = produtos.map(produto => `
+                <div class="card mb-2 card-venda">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 text-dark">${produto.descricao}</h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-upc"></i> Código: ${produto.codigo} | 
+                                    <i class="bi bi-box"></i> Estoque: ${produto.quantidade}
+                                    ${produto.quantidade <= produto.estoque_minimo ? '<span class="badge bg-danger ms-2">Estoque Baixo</span>' : ''}
+                                </small>
+                            </div>
+                            <div class="text-end ms-3">
+                                <strong class="text-success fs-5">R$ ${parseFloat(produto.preco_unitario).toFixed(2)}</strong>
+                                <br>
+                                <button class="btn btn-sm btn-vendas mt-1" 
+                                        onclick="iniciarVenda(${produto.id})"
+                                        ${produto.quantidade <= 0 ? 'disabled' : ''}>
+                                    <i class="bi bi-cart-plus"></i> Vender
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            resultados.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    Erro na busca: ${error}
+                </div>
+            `;
+        });
+});
+
+function iniciarVenda(produtoId) {
+    window.location.href = `/venda-rapida?produto=${produtoId}`;
+}
+
+// Focar no campo de busca ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('buscaVenda').focus();
+});
+</script>
+{% endblock %}
