@@ -1,3 +1,4 @@
+# routes/recuperacao_routes.py
 from flask import Blueprint, request, jsonify, render_template, flash, redirect
 from services.recuperacao_service import RecuperacaoSenhaService
 from services.email_service import EmailService

@@ -91,6 +91,37 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
+        # Criar tabela de vendas
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS vendas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            codigo VARCHAR(50) UNIQUE NOT NULL,
+            cliente_nome VARCHAR(255) NOT NULL,
+            vendedor_id INT NOT NULL,
+            data_venda DATETIME NOT NULL,
+            valor_total DECIMAL(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'finalizada',
+            FOREIGN KEY (vendedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+            INDEX idx_data_venda (data_venda),
+            INDEX idx_vendedor (vendedor_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+        
+        # Criar tabela de itens da venda
+        execute_query('''
+        CREATE TABLE IF NOT EXISTS venda_itens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            venda_id INT NOT NULL,
+            produto_id INT NOT NULL,
+            quantidade INT NOT NULL,
+            preco_unitario DECIMAL(10,2) NOT NULL,
+            valor_total DECIMAL(10,2) NOT NULL,
+            FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE,
+            FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE,
+            INDEX idx_venda (venda_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+        
         # Criar tabela de licenças ativas
         execute_query('''
         CREATE TABLE IF NOT EXISTS licencas_ativas (
@@ -166,6 +197,15 @@ def init_db():
             VALUES (%s, %s, %s, %s, %s, %s)
             ''', ('admin', password_hash, 'admin', 'Administrador', 'admin@empresa.com', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         
+        # Inserir usuário vendedor padrão se não existir
+        vendedor = execute_query('SELECT COUNT(*) as count FROM usuarios WHERE username = "vendedor"')
+        if vendedor and vendedor[0]['count'] == 0:
+            password_hash = generate_password_hash('vendedor123')
+            execute_query('''
+            INSERT INTO usuarios (username, password_hash, role, nome, email, data_cadastro)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ''', ('vendedor', password_hash, 'vendedor', 'Vendedor Teste', 'vendedor@empresa.com', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        
         # Inserir alguns dados de exemplo de produtos
         produtos = execute_query('SELECT COUNT(*) as count FROM produtos')
         if produtos and produtos[0]['count'] == 0:
@@ -205,6 +245,14 @@ try:
 except ImportError as e:
     print(f"⚠️ Sistema de recuperação de senha não disponível: {e}")
 
+# Registrar blueprint de vendas
+try:
+    from routes.vendas_routes import vendas_bp
+    app.register_blueprint(vendas_bp)
+    print("✅ Sistema de vendas registrado com sucesso!")
+except ImportError as e:
+    print(f"⚠️ Sistema de vendas não disponível: {e}")
+
 # Middleware de verificação de licença (opcional - descomente se quiser obrigatório)
 # @app.before_request
 # def verificar_licenca_global():
@@ -234,7 +282,11 @@ def is_admin():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        # Redirecionar baseado no role do usuário
+        if current_user.role == 'vendedor':
+            return redirect(url_for('vendas.painel_vendas'))
+        else:
+            return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form['username']
@@ -247,10 +299,14 @@ def login():
                 user_obj = User(user[0]['id'], user[0]['username'], user[0]['role'])
                 login_user(user_obj)
                 
-                next_page = request.args.get('next')
-                if next_page:
-                    return redirect(next_page)
-                return redirect(url_for('index'))
+                # Redirecionar baseado no role após login
+                if user[0]['role'] == 'vendedor':
+                    return redirect(url_for('vendas.painel_vendas'))
+                else:
+                    next_page = request.args.get('next')
+                    if next_page:
+                        return redirect(next_page)
+                    return redirect(url_for('index'))
             else:
                 flash('Usuário ou senha incorretos!', 'danger')
         except Exception as e:
@@ -285,7 +341,11 @@ def alterar_senha():
                 execute_query('UPDATE usuarios SET password_hash = %s WHERE id = %s', (new_password_hash, current_user.id))
                 
                 flash('Senha alterada com sucesso!', 'success')
-                return redirect(url_for('index'))
+                # Redirecionar baseado no role
+                if current_user.role == 'vendedor':
+                    return redirect(url_for('vendas.painel_vendas'))
+                else:
+                    return redirect(url_for('index'))
             else:
                 flash('Senha atual incorreta!', 'danger')
         except Exception as e:
@@ -297,6 +357,10 @@ def alterar_senha():
 @app.route('/')
 @login_required
 def index():
+    # Redirecionar vendedores para o painel de vendas
+    if current_user.role == 'vendedor':
+        return redirect(url_for('vendas.painel_vendas'))
+    
     try:
         produtos = execute_query('SELECT * FROM produtos ORDER BY descricao')
         
@@ -320,6 +384,11 @@ def index():
 @app.route('/adicionar', methods=['GET', 'POST'])
 @login_required
 def adicionar_produto():
+    # Verificar permissão
+    if current_user.role not in ['admin', 'estoque']:
+        flash('Acesso negado! Apenas administradores e gestores de estoque podem adicionar produtos.', 'danger')
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
         try:
             codigo = int(request.form['codigo'])
@@ -370,6 +439,11 @@ def adicionar_produto():
 @app.route('/produto/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_produto(id):
+    # Verificar permissão
+    if current_user.role not in ['admin', 'estoque']:
+        flash('Acesso negado! Apenas administradores e gestores de estoque podem editar produtos.', 'danger')
+        return redirect(url_for('index'))
+    
     try:
         produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
         if not produto:
@@ -415,6 +489,11 @@ def editar_produto(id):
 @app.route('/produto/entrada/<int:id>', methods=['GET', 'POST'])
 @login_required
 def entrada_estoque(id):
+    # Verificar permissão
+    if current_user.role not in ['admin', 'estoque']:
+        flash('Acesso negado! Apenas administradores e gestores de estoque podem registrar entradas.', 'danger')
+        return redirect(url_for('index'))
+    
     try:
         produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
         if not produto:
@@ -449,6 +528,11 @@ def entrada_estoque(id):
 @app.route('/produto/saida/<int:id>', methods=['GET', 'POST'])
 @login_required
 def saida_estoque(id):
+    # Verificar permissão
+    if current_user.role not in ['admin', 'estoque']:
+        flash('Acesso negado! Apenas administradores e gestores de estoque podem registrar saídas.', 'danger')
+        return redirect(url_for('index'))
+    
     try:
         produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
         if not produto:
@@ -488,6 +572,11 @@ def saida_estoque(id):
 @app.route('/produto/excluir/<int:id>')
 @login_required
 def excluir_produto(id):
+    # Verificar permissão
+    if current_user.role not in ['admin', 'estoque']:
+        flash('Acesso negado! Apenas administradores e gestores de estoque podem excluir produtos.', 'danger')
+        return redirect(url_for('index'))
+    
     try:
         # Verificar se o produto existe
         produto = execute_query('SELECT * FROM produtos WHERE id = %s', (id,))
