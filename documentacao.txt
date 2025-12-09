@@ -1,0 +1,24 @@
+=== ESTRUTURA ATUAL ===
+
+1. ADMIN (Administrador)
+   - Pode: TUDO
+   - Acesso: Todo o sistema + Licenças
+
+2. ESTOQUE (Gestor de Estoque)
+   - Pode: Gerenciar estoque, fazer vendas, ver relatórios
+   - Acesso: Gestão de produtos e vendas
+
+3. VENDEDOR
+   - Pode: Apenas vendas
+   - Acesso: Painel de vendas
+
+=== O QUE VAI MUDAR ===
+
+1. Vamos CRIAR um novo: TI
+   - Pode: Apenas gerenciar licenças
+   - Acesso: Sistema de licenças
+
+2. ADMIN vai PERDER: Acesso às licenças
+   - Mantém: Todo o resto
+
+3. VENDEDOR e ESTOQUE: Nada muda
