@@ -1,0 +1,15 @@
+{
+  "C217-3D40-E527-C5CD": {
+    "cliente": "Cliente Teste",
+    "email": "teste@empresa.com",
+    "cnpj": "12.345.678/0001-90",
+    "tipo": "standard",
+    "valor_pago": 2500,
+    "data_geracao": "2025-10-03 20:53:36",
+    "data_expiracao": "2026-10-03",
+    "ativa": true,
+    "ultima_verificacao": null,
+    "ativacoes": 0,
+    "ultima_ativacao": null
+  }
+}
