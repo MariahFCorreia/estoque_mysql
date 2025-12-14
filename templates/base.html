@@ -106,10 +106,7 @@
                                     <i class="bi bi-arrow-left-right"></i> Movimentações
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('admin_licencas') }}">
-                                    <i class="bi bi-key"></i> Licenças (Legado)
-                                </a></li>
-                            </ul>
+                             </ul>
                         </li>
                         {% endif %}
                         
@@ -222,10 +219,7 @@
                                 <li><a class="dropdown-item" href="{{ url_for('alterar_senha') }}">
                                     <i class="bi bi-key"></i> Alterar Senha
                                 </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('licenca.status_licenca') }}">
-                                    <i class="bi bi-shield-check"></i> Status da Licença
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
+                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
                                     <i class="bi bi-box-arrow-right"></i> Sair
                                 </a></li>
@@ -291,10 +285,7 @@
                                 <i class="bi bi-person"></i> {{ current_user.username }}
                                 <span class="badge bg-secondary ms-1">{{ current_user.role|upper }}</span>
                             </span>
-                            | 
-                            <a href="{{ url_for('licenca.status_licenca') }}" class="text-decoration-none ms-2">
-                                <i class="bi bi-shield-check"></i> Status Licença
-                            </a>
+                            
                         {% else %}
                             <a href="{{ url_for('login') }}" class="text-decoration-none">
                                 <i class="bi bi-box-arrow-in-right"></i> Faça login
