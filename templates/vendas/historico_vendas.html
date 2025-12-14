@@ -1,0 +1,210 @@
+{% extends "vendas/base_vendas.html" %}
+
+{% block content_vendas %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock-history me-2"></i>Histórico de Vendas</h2>
+    <a href="{{ url_for('vendas.painel_vendas') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card card-venda mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-filter me-2"></i>Filtros</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="data_inicio" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="data_inicio" name="data_inicio">
+            </div>
+            <div class="col-md-3">
+                <label for="data_fim" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="data_fim" name="data_fim">
+            </div>
+            <div class="col-md-4">
+                <label for="cliente" class="form-label">Cliente</label>
+                <input type="text" class="form-control" id="cliente" name="cliente" placeholder="Nome do cliente">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-vendas w-100">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumo -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total de Vendas</h5>
+                        <h3 class="text-primary">{{ total }}</h3>
+                    </div>
+                    <i class="bi bi-cart-check display-6 text-primary opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Valor Total</h5>
+                        <h3 class="text-success">
+                            R$ {{ "%.2f"|format(vendas|sum(attribute='valor_total') if vendas else 0) }}
+                        </h3>
+                    </div>
+                    <i class="bi bi-currency-dollar display-6 text-success opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-venda text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Página Atual</h5>
+                        <h3 class="text-info">{{ pagina }}/{{ total_paginas }}</h3>
+                    </div>
+                    <i class="bi bi-file-earmark-text display-6 text-info opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Vendas -->
+<div class="card card-venda">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list me-2"></i>Vendas Realizadas</h5>
+        <a href="{{ url_for('vendas.venda_rapida') }}" class="btn btn-vendas btn-sm">
+            <i class="bi bi-cart-plus"></i> Nova Venda
+        </a>
+    </div>
+    <div class="card-body">
+        {% if vendas %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Data/Hora</th>
+                        <th>Cliente</th>
+                        <th>Itens</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venda in vendas %}
+                    <tr>
+                        <td>
+                            <strong>{{ venda.codigo }}</strong>
+                        </td>
+                        <td>{{ venda.data_venda.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ venda.cliente_nome }}</td>
+                        <td>
+                            {% if venda.itens %}
+                                <small>{{ venda.itens|replace('; ', '<br>')|safe }}</small>
+                            {% else %}
+                                <span class="text-muted">Sem detalhes</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong class="text-success">R$ {{ "%.2f"|format(venda.valor_total) }}</strong>
+                        </td>
+                        <td>
+                            {% if venda.status == 'finalizada' %}
+                                <span class="badge bg-success">{{ venda.status }}</span>
+                            {% elif venda.status == 'cancelada' %}
+                                <span class="badge bg-danger">{{ venda.status }}</span>
+                            {% elif venda.status == 'pendente' %}
+                                <span class="badge bg-warning">{{ venda.status }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ venda.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if total_paginas > 1 %}
+        <nav aria-label="Paginação">
+            <ul class="pagination justify-content-center mt-4">
+                {% if pagina > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina - 1 }}">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ p }}</span>
+                    </li>
+                    {% elif p >= pagina - 2 and p <= pagina + 2 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?pagina={{ p }}">{{ p }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagina < total_paginas %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina + 1 }}">
+                        Próxima <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-clock-history display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Nenhuma venda encontrada</h4>
+            <p class="text-muted">Você ainda não realizou nenhuma venda.</p>
+            <a href="{{ url_for('vendas.venda_rapida') }}" class="btn btn-vendas mt-2">
+                <i class="bi bi-cart-plus"></i> Fazer Primeira Venda
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_vendas %}
+<script>
+// Preencher filtros de data com valores padrão
+document.addEventListener('DOMContentLoaded', function() {
+    const hoje = new Date();
+    const primeiraDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    // Formatar datas para input type="date"
+    function formatarDataParaInput(data) {
+        return data.toISOString().split('T')[0];
+    }
+    
+    // Se não houver filtros aplicados, definir padrão: mês atual
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('data_inicio') && !urlParams.has('data_fim')) {
+        document.getElementById('data_inicio').value = formatarDataParaInput(primeiraDiaMes);
+        document.getElementById('data_fim').value = formatarDataParaInput(hoje);
+    }
+});
+</script>
+{% endblock %}
