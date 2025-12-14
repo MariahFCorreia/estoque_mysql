@@ -10,7 +10,7 @@ vendas_bp = Blueprint('vendas', __name__)
 
 @vendas_bp.route('/painel-vendas')
 @login_required
-@requer_permissao('admin', 'vendedor')
+@requer_permissao('vendedor')
 def painel_vendas():
     """Dashboard do vendedor"""
     try:
@@ -46,7 +46,7 @@ def painel_vendas():
 
 @vendas_bp.route('/venda-rapida')
 @login_required
-@requer_permissao('admin', 'vendedor')
+@requer_permissao('vendedor')
 def venda_rapida():
     """Interface de venda rápida"""
     # Se veio com produto pré-selecionado
@@ -60,7 +60,7 @@ def venda_rapida():
 
 @vendas_bp.route('/api/produtos-venda')
 @login_required
-@requer_permissao('admin', 'vendedor')
+@requer_permissao('vendedor')
 def api_produtos_venda():
     """API para busca de produtos no painel de vendas"""
     query = request.args.get('q', '')
@@ -84,7 +84,7 @@ def api_produtos_venda():
 
 @vendas_bp.route('/venda/finalizar', methods=['POST'])
 @login_required
-@requer_permissao('admin', 'vendedor')
+@requer_permissao( 'vendedor')
 def finalizar_venda():
     """Finaliza uma venda rápida"""
     try:
@@ -158,7 +158,7 @@ def finalizar_venda():
 
 @vendas_bp.route('/historico-vendas')
 @login_required
-@requer_permissao('admin', 'vendedor')
+@requer_permissao( 'vendedor')
 def historico_vendas():
     """Histórico de vendas do vendedor"""
     try:

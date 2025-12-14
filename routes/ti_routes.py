@@ -19,7 +19,7 @@ ti_bp = Blueprint('ti', __name__)
 
 @ti_bp.route('/ti/dashboard')
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def dashboard():
     """Dashboard do TI - VERSÃO CORRIGIDA"""
     try:
@@ -73,7 +73,7 @@ def dashboard():
 # ... restante do código permanece o mesmo ...
 @ti_bp.route('/ti/licencas')
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def gerenciar_licencas():
     """Gerenciamento de licenças"""
     if not gerenciador_licencas:
@@ -96,7 +96,7 @@ def gerenciar_licencas():
 
 @ti_bp.route('/ti/licenca/gerar', methods=['POST'])
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def gerar_licenca():
     """Gerar nova licença"""
     if not gerenciador_licencas:
@@ -141,7 +141,7 @@ def gerar_licenca():
 
 @ti_bp.route('/ti/licenca/desativar/<string:chave>')
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def desativar_licenca(chave):
     """Desativar uma licença"""
     if not gerenciador_licencas:
@@ -164,7 +164,7 @@ def desativar_licenca(chave):
 
 @ti_bp.route('/ti/licenca/renovar/<string:chave>', methods=['POST'])
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def renovar_licenca(chave):
     """Renovar uma licença expirada"""
     if not gerenciador_licencas:
@@ -202,7 +202,7 @@ def renovar_licenca(chave):
 
 @ti_bp.route('/ti/usuarios/licencas')
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def usuarios_licencas():
     """Listar usuários com informações de licença - VERSÃO SIMPLIFICADA"""
     try:
@@ -261,7 +261,7 @@ def backup_sistema():
 
 @ti_bp.route('/ti/licenca/exportar')
 @login_required
-@requer_permissao('ti', 'admin')
+@requer_permissao('ti')
 def exportar_licencas():
     """Exportar todas as licenças para CSV"""
     if not gerenciador_licencas:

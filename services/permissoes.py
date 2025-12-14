@@ -58,7 +58,7 @@ def pode_gerenciar_usuarios():
 
 def pode_gerenciar_licencas():
     """Verifica se usuário pode gerenciar licenças"""
-    return current_user.is_authenticated and current_user.role in ['admin', 'ti']
+    return current_user.is_authenticated and current_user.role in ['ti']
 
 def pode_ver_relatorios():
     """Verifica se usuário pode ver relatórios avançados"""
@@ -66,7 +66,7 @@ def pode_ver_relatorios():
 
 def pode_fazer_vendas():
     """Verifica se usuário pode realizar vendas"""
-    return current_user.is_authenticated and current_user.role in ['admin', 'vendedor']
+    return current_user.is_authenticated and current_user.role in ['vendedor']
 
 def pode_gerenciar_estoque():
     """Verifica se usuário pode gerenciar estoque"""
@@ -79,8 +79,7 @@ PERMISSOES_POR_ROLE = {
         'descricao': 'Acesso completo ao sistema',
         'permissoes': [
             'gerenciar_usuarios',
-            'gerenciar_estoque', 
-            'fazer_vendas',
+            'gerenciar_estoque',
             'ver_relatorios',
             'configurar_sistema',
             'backup_dados'
