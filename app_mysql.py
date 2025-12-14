@@ -280,6 +280,31 @@ except ImportError as e:
 #     except Exception as e:
 #         print(f"⚠️ Middleware de licença não disponível: {e}")
 #         return None
+from flask import request, redirect, url_for
+from flask_login import current_user
+
+# Adicione isto ANTES de qualquer @app.route
+@app.before_request
+def verificar_acesso():
+    # Lista de endpoints que todos podem acessar
+    endpoints_publicos = [
+        'login', 'logout', 'static', 
+        'licenca.ativar_licenca', 'licenca.status_licenca'
+    ]
+    
+    # Se não está autenticado ou é endpoint público, deixar passar
+    if not current_user.is_authenticated or request.endpoint in endpoints_publicos:
+        return None
+    
+    # Redirecionamentos baseados no role
+    if request.endpoint == 'index':  # Página principal
+        if current_user.role == 'ti':
+            return redirect(url_for('ti.dashboard'))
+        elif current_user.role == 'vendedor':
+            return redirect(url_for('vendas.painel_vendas'))
+        # admin e estoque podem acessar normalmente
+    
+    return None
     
 # Callback para carregar o usuário
 @login_manager.user_loader

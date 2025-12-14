@@ -181,34 +181,48 @@ def admin_desativar_licenca(chave):
 @licenca_bp.route('/licenca/status')
 @login_required
 def status_licenca():
-    """Página de status da licença atual"""
+    """Página de status da licença atual - VERSÃO CORRIGIDA"""
     try:
         from database_mysql import execute_query
+        from datetime import datetime
         
         licenca_ativa = execute_query(
             "SELECT * FROM licencas_ativas WHERE ativa = TRUE ORDER BY data_ativacao DESC LIMIT 1"
-        )
+        ) or []
         
         status_info = {
             'ativa': False,
-            'mensagem': 'Nenhuma licença ativa',
+            'mensagem': 'Nenhuma licença ativa encontrada',
             'detalhes': None
         }
         
-        if licenca_ativa and gerenciador_licencas:
-            chave_licenca = licenca_ativa[0]['chave_licenca']
-            valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
-            
-            status_info = {
-                'ativa': valida,
-                'mensagem': mensagem,
-                'detalhes': licenca_ativa[0]
-            }
+        if licenca_ativa and len(licenca_ativa) > 0:
+            if gerenciador_licencas:
+                chave_licenca = licenca_ativa[0]['chave_licenca']
+                valida, mensagem = gerenciador_licencas.verificar_licenca(chave_licenca)
+                
+                status_info = {
+                    'ativa': valida,
+                    'mensagem': mensagem,
+                    'detalhes': licenca_ativa[0]
+                }
+            else:
+                status_info = {
+                    'ativa': True,
+                    'mensagem': 'Licença ativa (sistema offline)',
+                    'detalhes': licenca_ativa[0]
+                }
         
-        return render_template('status_licenca.html', status_info=status_info)
+        return render_template('status_licenca.html', 
+                             status=status_info,
+                             now=datetime.now())
+        
     except Exception as e:
-        flash(f'❌ Erro ao verificar status da licença: {str(e)}', 'danger')
-        return redirect(url_for('index'))
+        print(f"❌ Erro ao verificar status da licença: {e}")
+        # Em caso de erro, mostrar página com mensagem de erro
+        return render_template('status_licenca.html', 
+                             status={'ativa': False, 'mensagem': f'Erro: {str(e)}', 'detalhes': None},
+                             now=datetime.now())
 
 # Middleware de verificação de licença
 def verificar_licenca_middleware():
