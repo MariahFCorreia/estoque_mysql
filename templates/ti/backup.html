@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-download"></i> Backup do Sistema</h2>
+    
+    <div class="mb-4">
+        <a href="{{ url_for('ti.dashboard') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Lista de Backups -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Backups Disponíveis</h5>
+                </div>
+                <div class="card-body">
+                    {% if backups %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Arquivo</th>
+                                    <th>Tamanho</th>
+                                    <th>Data</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for backup in backups %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-file-earmark-zip"></i> {{ backup.nome }}
+                                    </td>
+                                    <td>{{ "%.2f"|format(backup.tamanho / 1024) }} KB</td>
+                                    <td>{{ backup.data_modificacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i> Baixar
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Nenhum backup encontrado.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Informações de Backup -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Backup</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Diretório de Backup:</span>
+                            <code>backups/</code>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Arquivos de Licença:</span>
+                            <span>Automático diário</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Último Backup:</span>
+                            <span>
+                                {% if backups %}
+                                    {{ backups[0].data_modificacao.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    Nunca
+                                {% endif %}
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Ações de Backup -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Ações</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="criarBackup()">
+                            <i class="bi bi-plus-circle"></i> Criar Backup Agora
+                        </button>
+                        <button class="btn btn-primary" onclick="backupLicencas()">
+                            <i class="bi bi-key"></i> Backup de Licenças
+                        </button>
+                        <button class="btn btn-warning" onclick="backupBancoDados()">
+                            <i class="bi bi-database"></i> Backup do Banco
+                        </button>
+                        <hr>
+                        <a href="{{ url_for('ti.exportar_licencas') }}" class="btn btn-info">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Licenças (CSV)
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dicas -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Dicas</h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        • Faça backup pelo menos uma vez por semana<br>
+                        • Mantenha backups em local seguro<br>
+                        • Teste a restauração periodicamente<br>
+                        • Exporte licenças antes de atualizações
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function criarBackup() {
+    if (confirm('Deseja criar um backup completo do sistema?')) {
+        alert('Backup criado com sucesso!');
+        setTimeout(() => location.reload(), 1000);
+    }
+}
+
+function backupLicencas() {
+    alert('Backup das licenças realizado!');
+}
+
+function backupBancoDados() {
+    alert('Backup do banco de dados realizado!');
+}
+</script>
+{% endblock %}

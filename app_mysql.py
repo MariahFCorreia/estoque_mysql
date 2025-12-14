@@ -153,7 +153,7 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ''')
         
-        # Tabela de referências NF-e
+                # Tabela de referências NF-e
         execute_query('''
         CREATE TABLE IF NOT EXISTS nfe_referencias (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -206,6 +206,16 @@ def init_db():
             VALUES (%s, %s, %s, %s, %s, %s)
             ''', ('vendedor', password_hash, 'vendedor', 'Vendedor Teste', 'vendedor@empresa.com', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         
+        # 🟢 ADICIONE ESTE CÓDIGO AQUI - Inserir usuário TI padrão
+        usuario_ti = execute_query('SELECT COUNT(*) as count FROM usuarios WHERE username = "ti"')
+        if usuario_ti and usuario_ti[0]['count'] == 0:
+            password_hash = generate_password_hash('ti123')
+            execute_query('''
+            INSERT INTO usuarios (username, password_hash, role, nome, email, data_cadastro)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ''', ('ti', password_hash, 'ti', 'Técnico de TI', 'ti@empresa.com', 
+                  datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        
         # Inserir alguns dados de exemplo de produtos
         produtos = execute_query('SELECT COUNT(*) as count FROM produtos')
         if produtos and produtos[0]['count'] == 0:
@@ -252,6 +262,14 @@ try:
     print("✅ Sistema de vendas registrado com sucesso!")
 except ImportError as e:
     print(f"⚠️ Sistema de vendas não disponível: {e}")
+
+# 🟢 ADICIONE ESTE CÓDIGO AQUI - Registrar blueprint do TI
+try:
+    from routes.ti_routes import ti_bp
+    app.register_blueprint(ti_bp, url_prefix='/ti')
+    print("✅ Sistema de TI registrado com sucesso!")
+except ImportError as e:
+    print(f"⚠️ Sistema de TI não disponível: {e}")
 
 # Middleware de verificação de licença (opcional - descomente se quiser obrigatório)
 # @app.before_request
@@ -781,14 +799,13 @@ def api_produto(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Rota para gerenciamento de licenças (apenas admin)
+# Rota para gerenciamento de licenças (apenas admin) - 🟢 ALTERE ESTA ROTA
 @app.route('/admin/licencas')
 @login_required
 def admin_licencas():
-    if not is_admin():
-        flash('Acesso negado! Apenas administradores podem gerenciar licenças.', 'danger')
-        return redirect(url_for('index'))
-    
+    """Redirecionar para o sistema de TI"""
+    flash('O gerenciamento de licenças foi movido para o módulo de TI', 'info')
+    return redirect(url_for('ti.gerenciar_licencas'))
     try:
         from licenca_config import gerenciador_licencas
         licencas = gerenciador_licencas.listar_licencas()

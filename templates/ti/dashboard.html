@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-cpu"></i> Dashboard de TI</h2>
+    
+    <!-- Cards de Status -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5><i class="bi bi-people"></i> Usuários</h5>
+                    <h3>{{ usuarios_total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5><i class="bi bi-box-seam"></i> Produtos</h5>
+                    <h3>{{ produtos_total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5><i class="bi bi-key"></i> Licenças Ativas</h5>
+                    <h3>{{ licencas_ativas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white {{ 'bg-success' if status_info.ativa else 'bg-danger' }}">
+                <div class="card-body">
+                    <h5><i class="bi bi-shield-check"></i> Status Licença</h5>
+                    <p class="mb-0">{{ "✓ Ativa" if status_info.ativa else "✗ Inativa" }}</p>
+                    <small class="d-block">{{ status_info.mensagem[:30] }}...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu de Ações Rápidas -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Ações Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2 d-md-flex">
+                        <a href="{{ url_for('ti.gerenciar_licencas') }}" class="btn btn-primary me-2">
+                            <i class="bi bi-key"></i> Gerenciar Licenças
+                        </a>
+                        <a href="{{ url_for('ti.usuarios_licencas') }}" class="btn btn-info me-2">
+                            <i class="bi bi-people"></i> Usuários e Licenças
+                        </a>
+                        <a href="{{ url_for('ti.backup_sistema') }}" class="btn btn-warning me-2">
+                            <i class="bi bi-download"></i> Backup
+                        </a>
+                        <a href="{{ url_for('licenca.ativar_licenca') }}" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Ativar Nova Licença
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimas Licenças Ativadas -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Últimas Licenças Ativadas</h5>
+                </div>
+                <div class="card-body">
+                    {% if ultimas_licencas %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Chave</th>
+                                    <th>Usuário</th>
+                                    <th>Data Ativação</th>
+                                    <th>Última Verificação</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for licenca in ultimas_licencas %}
+                                <tr>
+                                    <td><code>{{ licenca.chave_licenca[:8] }}...</code></td>
+                                    <td>{{ licenca.nome or licenca.username or 'N/A' }}</td>
+                                    <td>{{ licenca.data_ativacao or 'N/A' }}</td>
+                                    <td>{{ licenca.ultima_verificacao or 'Nunca' }}</td>
+                                    <td>
+                                        {% if licenca.ativa %}
+                                        <span class="badge bg-success">Ativa</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inativa</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Nenhuma licença ativada ainda.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
