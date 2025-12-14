@@ -106,7 +106,8 @@
                                     <i class="bi bi-arrow-left-right"></i> Movimentações
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                             </ul>
+                                <!-- Licenças removido do menu admin -->
+                            </ul>
                         </li>
                         {% endif %}
                         
@@ -167,12 +168,14 @@
                         </li>
                         {% endif %}
                         
-                        <!-- Ativar Licença (para todos autenticados) -->
+                        <!-- Ativar Licença - APENAS PARA TI -->
+                        {% if current_user.role == 'ti' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('licenca.ativar_licenca') }}">
                                 <i class="bi bi-key"></i> Ativar Licença
                             </a>
                         </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
                 
@@ -219,7 +222,7 @@
                                 <li><a class="dropdown-item" href="{{ url_for('alterar_senha') }}">
                                     <i class="bi bi-key"></i> Alterar Senha
                                 </a></li>
-                                 <li><hr class="dropdown-divider"></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
                                     <i class="bi bi-box-arrow-right"></i> Sair
                                 </a></li>
