@@ -113,8 +113,8 @@
                         </li>
                         {% endif %}
                         
-                        <!-- Menu TI (NOVO) - APENAS PARA TI E ADMIN -->
-                        {% if current_user.role == 'ti' or current_user.role == 'admin' %}
+                        <!-- Menu TI (NOVO) - APENAS PARA TI -->
+                        {% if current_user.role == 'ti' %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-cpu"></i> TI
@@ -162,7 +162,7 @@
                         {% endif %}
                         
                         <!-- Menu Vendas -->
-                        {% if current_user.role in ['admin', 'vendedor'] %}
+                        {% if current_user.role in ['vendedor'] %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('vendas.painel_vendas') }}">
                                 <i class="bi bi-cart"></i> Vendas
