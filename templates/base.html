@@ -38,6 +38,10 @@
             background-color: #f8f9fa;
             border-top: 1px solid #dee2e6;
         }
+        .badge-role {
+            font-size: 0.7em;
+            padding: 0.25em 0.6em;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -46,9 +50,24 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 rounded">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('login') }}">
- <i class="bi bi-box-seam"></i> Sistema de Estoque
-</a>
+            <!-- LOGO - CORRIGIDO COM LINKS CONDICIONAIS -->
+            <a class="navbar-brand" href="
+                {% if current_user.is_authenticated %}
+                    {% if current_user.role == 'ti' %}
+                        {{ url_for('ti.dashboard') }}
+                    {% elif current_user.role == 'vendedor' %}
+                        {{ url_for('vendas.painel_vendas') }}
+                    {% elif current_user.role == 'admin' or current_user.role == 'estoque' %}
+                        {{ url_for('index') }}
+                    {% else %}
+                        {{ url_for('login') }}
+                    {% endif %}
+                {% else %}
+                    {{ url_for('login') }}
+                {% endif %}
+            ">
+                <i class="bi bi-box-seam"></i> Sistema de Estoque
+            </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -58,9 +77,17 @@
                 <!-- Menu Principal -->
                 <ul class="navbar-nav me-auto">
                     {% if current_user.is_authenticated %}
-                        <!-- Dashboard -->
+                        <!-- DASHBOARD - CORRIGIDO COM LINKS CONDICIONAIS -->
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('index') }}">
+                            <a class="nav-link" href="
+                                {% if current_user.role == 'ti' %}
+                                    {{ url_for('ti.dashboard') }}
+                                {% elif current_user.role == 'vendedor' %}
+                                    {{ url_for('vendas.painel_vendas') }}
+                                {% elif current_user.role == 'admin' or current_user.role == 'estoque' %}
+                                    {{ url_for('index') }}
+                                {% endif %}
+                            ">
                                 <i class="bi bi-house"></i> Dashboard
                             </a>
                         </li>
@@ -78,11 +105,15 @@
                                 <li><a class="dropdown-item" href="{{ url_for('movimentacoes') }}">
                                     <i class="bi bi-arrow-left-right"></i> Movimentações
                                 </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_licencas') }}">
+                                    <i class="bi bi-key"></i> Licenças (Legado)
+                                </a></li>
                             </ul>
                         </li>
                         {% endif %}
                         
-                        <!-- Menu TI (NOVO) -->
+                        <!-- Menu TI (NOVO) - APENAS PARA TI E ADMIN -->
                         {% if current_user.role == 'ti' or current_user.role == 'admin' %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -90,7 +121,7 @@
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="{{ url_for('ti.dashboard') }}">
-                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                    <i class="bi bi-speedometer2"></i> Dashboard TI
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('ti.gerenciar_licencas') }}">
                                     <i class="bi bi-key"></i> Gerenciar Licenças
@@ -122,6 +153,10 @@
                                 <li><a class="dropdown-item" href="{{ url_for('movimentacoes') }}">
                                     <i class="bi bi-arrow-left-right"></i> Movimentações
                                 </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('index') }}">
+                                    <i class="bi bi-list"></i> Lista de Produtos
+                                </a></li>
                             </ul>
                         </li>
                         {% endif %}
@@ -135,7 +170,7 @@
                         </li>
                         {% endif %}
                         
-                        <!-- Ativar Licença (para todos) -->
+                        <!-- Ativar Licença (para todos autenticados) -->
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('licenca.ativar_licenca') }}">
                                 <i class="bi bi-key"></i> Ativar Licença
@@ -150,28 +185,44 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle"></i> {{ current_user.username }}
-                                <span class="badge bg-light text-dark ms-1">
+                                <span class="badge badge-role bg-light text-dark ms-1">
                                     {% if current_user.role == 'admin' %}
-                                        Admin
+                                        <i class="bi bi-shield"></i> Admin
                                     {% elif current_user.role == 'ti' %}
-                                        TI
+                                        <i class="bi bi-cpu"></i> TI
                                     {% elif current_user.role == 'estoque' %}
-                                        Estoque
+                                        <i class="bi bi-boxes"></i> Estoque
                                     {% elif current_user.role == 'vendedor' %}
-                                        Vendedor
+                                        <i class="bi bi-cart"></i> Vendedor
+                                    {% else %}
+                                        {{ current_user.role }}
                                     {% endif %}
                                 </span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><span class="dropdown-item-text">
-                                    <strong>{{ current_user.username }}</strong><br>
-                                    <small>{{ current_user.role|upper }}</small>
-                                </span></li>
+                                <li>
+                                    <span class="dropdown-item-text">
+                                        <strong>{{ current_user.username }}</strong><br>
+                                        <small class="text-muted">
+                                            {% if current_user.role == 'admin' %}
+                                                Administrador do Sistema
+                                            {% elif current_user.role == 'ti' %}
+                                                Técnico de TI
+                                            {% elif current_user.role == 'estoque' %}
+                                                Gestor de Estoque
+                                            {% elif current_user.role == 'vendedor' %}
+                                                Vendedor
+                                            {% else %}
+                                                Usuário
+                                            {% endif %}
+                                        </small>
+                                    </span>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('alterar_senha') }}">
                                     <i class="bi bi-key"></i> Alterar Senha
                                 </a></li>
-                               <li><a class="dropdown-item" href="{{ url_for('licenca.status_licenca') }}">
+                                <li><a class="dropdown-item" href="{{ url_for('licenca.status_licenca') }}">
                                     <i class="bi bi-shield-check"></i> Status da Licença
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
@@ -199,7 +250,20 @@
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show">
-                        {{ message }}
+                        <div class="d-flex align-items-center">
+                            {% if category == 'success' %}
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                            {% elif category == 'danger' %}
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="bi bi-exclamation-circle-fill me-2"></i>
+                            {% elif category == 'info' %}
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle me-2"></i>
+                            {% endif %}
+                            <span>{{ message }}</span>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
@@ -217,16 +281,24 @@
                 <div class="col-md-6">
                     <p class="mb-0">
                         <i class="bi bi-box-seam"></i> Sistema de Estoque e Vendas &copy; 2024
+                        <span class="text-muted ms-2">v2.0</span>
                     </p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <small class="text-muted">
                         {% if current_user.is_authenticated %}
-                            Usuário: {{ current_user.username }} | 
-                            Perfil: {{ current_user.role|upper }} | 
-                            <a href="{{ url_for('licenca.status_licenca') }}" class="text-decoration-none">Status Licença</a>
+                            <span class="me-3">
+                                <i class="bi bi-person"></i> {{ current_user.username }}
+                                <span class="badge bg-secondary ms-1">{{ current_user.role|upper }}</span>
+                            </span>
+                            | 
+                            <a href="{{ url_for('licenca.status_licenca') }}" class="text-decoration-none ms-2">
+                                <i class="bi bi-shield-check"></i> Status Licença
+                            </a>
                         {% else %}
-                            <a href="{{ url_for('login') }}" class="text-decoration-none">Faça login</a>
+                            <a href="{{ url_for('login') }}" class="text-decoration-none">
+                                <i class="bi bi-box-arrow-in-right"></i> Faça login
+                            </a>
                         {% endif %}
                     </small>
                 </div>
@@ -244,23 +316,49 @@
             setTimeout(function() {
                 var alerts = document.querySelectorAll('.alert');
                 alerts.forEach(function(alert) {
-                    var bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
+                    if (alert.classList.contains('alert-dismissible')) {
+                        var bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
                 });
             }, 5000);
         });
         
-        // Atualizar horário em tempo real
+        // Função para verificar se é mobile
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+        
+        // Fechar dropdowns ao clicar fora (em mobile)
+        if (isMobile()) {
+            document.addEventListener('click', function(event) {
+                var dropdowns = document.querySelectorAll('.dropdown-menu.show');
+                dropdowns.forEach(function(dropdown) {
+                    if (!dropdown.contains(event.target)) {
+                        var dropdownToggle = dropdown.previousElementSibling;
+                        if (dropdownToggle && dropdownToggle.classList.contains('show')) {
+                            dropdownToggle.click();
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Atualizar horário no footer (opcional)
         function updateTime() {
-            const now = new Date();
             const timeElement = document.getElementById('current-time');
             if (timeElement) {
+                const now = new Date();
                 timeElement.textContent = now.toLocaleTimeString('pt-BR');
             }
         }
         
-        setInterval(updateTime, 1000);
-        updateTime();
+        // Inicializar horário se o elemento existir
+        const timeElement = document.getElementById('current-time');
+        if (timeElement) {
+            setInterval(updateTime, 1000);
+            updateTime();
+        }
     </script>
     
     {% block extra_js %}{% endblock %}
