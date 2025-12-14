@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-people"></i> Usuários e Licenças</h2>
+    
+    <div class="mb-4">
+        <a href="{{ url_for('ti.dashboard') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Usuários do Sistema</h5>
+        </div>
+        <div class="card-body">
+            {% if usuarios %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Usuário</th>
+                            <th>E-mail</th>
+                            <th>Perfil</th>
+                            <th>Data Cadastro</th>
+                            <th>Licenças</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.nome }}</td>
+                            <td>{{ usuario.username }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td>
+                                {% if usuario.role == 'admin' %}
+                                <span class="badge bg-danger">Admin</span>
+                                {% elif usuario.role == 'ti' %}
+                                <span class="badge bg-primary">TI</span>
+                                {% elif usuario.role == 'estoque' %}
+                                <span class="badge bg-warning">Estoque</span>
+                                {% elif usuario.role == 'vendedor' %}
+                                <span class="badge bg-success">Vendedor</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ usuario.role }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ usuario.data_cadastro }}</td>
+                            <td class="text-center">
+                                {% if usuario.total_licencas and usuario.total_licencas > 0 %}
+                                <span class="badge bg-success">{{ usuario.total_licencas }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Nenhum usuário encontrado.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

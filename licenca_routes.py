@@ -205,7 +205,7 @@ def status_licenca():
                 'detalhes': licenca_ativa[0]
             }
         
-        return render_template('status_licenca.html', status=status_info)
+        return render_template('status_licenca.html', status_info=status_info)
     except Exception as e:
         flash(f'❌ Erro ao verificar status da licença: {str(e)}', 'danger')
         return redirect(url_for('index'))
