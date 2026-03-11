@@ -153,7 +153,7 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ''')
         
-                # Tabela de referências NF-e
+        # Tabela de referências NF-e
         execute_query('''
         CREATE TABLE IF NOT EXISTS nfe_referencias (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -206,7 +206,7 @@ def init_db():
             VALUES (%s, %s, %s, %s, %s, %s)
             ''', ('vendedor', password_hash, 'vendedor', 'Vendedor Teste', 'vendedor@empresa.com', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         
-        # 🟢 ADICIONE ESTE CÓDIGO AQUI - Inserir usuário TI padrão
+        # Inserir usuário TI padrão
         usuario_ti = execute_query('SELECT COUNT(*) as count FROM usuarios WHERE username = "ti"')
         if usuario_ti and usuario_ti[0]['count'] == 0:
             password_hash = generate_password_hash('ti123')
@@ -258,12 +258,12 @@ except ImportError as e:
 # Registrar blueprint de vendas
 try:
     from routes.vendas_routes import vendas_bp
-    app.register_blueprint(vendas_bp)
+    app.register_blueprint(vendas_bp, url_prefix='/vendas')
     print("✅ Sistema de vendas registrado com sucesso!")
 except ImportError as e:
     print(f"⚠️ Sistema de vendas não disponível: {e}")
 
-# 🟢 ADICIONE ESTE CÓDIGO AQUI - Registrar blueprint do TI
+# Registrar blueprint do TI
 try:
     from routes.ti_routes import ti_bp
     app.register_blueprint(ti_bp, url_prefix='/ti')
@@ -271,15 +271,6 @@ try:
 except ImportError as e:
     print(f"⚠️ Sistema de TI não disponível: {e}")
 
-# Middleware de verificação de licença (opcional - descomente se quiser obrigatório)
-# @app.before_request
-# def verificar_licenca_global():
-#     try:
-#         from licenca_routes import verificar_licenca_middleware
-#         return verificar_licenca_middleware()
-#     except Exception as e:
-#         print(f"⚠️ Middleware de licença não disponível: {e}")
-#         return None
 from flask import request, redirect, url_for
 from flask_login import current_user
 
@@ -328,6 +319,8 @@ def login():
         # Redirecionar baseado no role do usuário
         if current_user.role == 'vendedor':
             return redirect(url_for('vendas.painel_vendas'))
+        elif current_user.role == 'ti':
+            return redirect(url_for('ti.dashboard'))
         else:
             return redirect(url_for('index'))
     
@@ -345,6 +338,8 @@ def login():
                 # Redirecionar baseado no role após login
                 if user[0]['role'] == 'vendedor':
                     return redirect(url_for('vendas.painel_vendas'))
+                elif user[0]['role'] == 'ti':
+                    return redirect(url_for('ti.dashboard'))
                 else:
                     next_page = request.args.get('next')
                     if next_page:
@@ -387,6 +382,8 @@ def alterar_senha():
                 # Redirecionar baseado no role
                 if current_user.role == 'vendedor':
                     return redirect(url_for('vendas.painel_vendas'))
+                elif current_user.role == 'ti':
+                    return redirect(url_for('ti.dashboard'))
                 else:
                     return redirect(url_for('index'))
             else:
@@ -403,6 +400,8 @@ def index():
     # Redirecionar vendedores para o painel de vendas
     if current_user.role == 'vendedor':
         return redirect(url_for('vendas.painel_vendas'))
+    elif current_user.role == 'ti':
+        return redirect(url_for('ti.dashboard'))
     
     try:
         produtos = execute_query('SELECT * FROM produtos ORDER BY descricao')
@@ -824,24 +823,13 @@ def api_produto(id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Rota para gerenciamento de licenças (apenas admin) - 🟢 ALTERE ESTA ROTA
+# Rota para gerenciamento de licenças (apenas admin) - CORRIGIDA
 @app.route('/admin/licencas')
 @login_required
 def admin_licencas():
     """Redirecionar para o sistema de TI"""
     flash('O gerenciamento de licenças foi movido para o módulo de TI', 'info')
     return redirect(url_for('ti.gerenciar_licencas'))
-    try:
-        from licenca_config import gerenciador_licencas
-        licencas = gerenciador_licencas.listar_licencas()
-        estatisticas = gerenciador_licencas.estatisticas()
-        
-        return render_template('admin_licencas.html', 
-                             licencas=licencas,
-                             estatisticas=estatisticas)
-    except Exception as e:
-        flash(f'❌ Erro ao carregar licenças: {str(e)}', 'danger')
-        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     init_db()
