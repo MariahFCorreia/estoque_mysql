@@ -42,6 +42,18 @@
             font-size: 0.7em;
             padding: 0.25em 0.6em;
         }
+        /* Classe utilitária para elementos visualmente escondidos mas acessíveis */
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -69,13 +81,15 @@
                 <i class="bi bi-box-seam"></i> Sistema de Estoque
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+            <!-- Botão do menu hamburger - CORRIGIDO: adicionado aria-label e title -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Alternar navegação" title="Menu">
+                <span class="navbar-toggler-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Menu</span>
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Menu Principal -->
-                <ul class="navbar-nav me-auto">
+                <!-- Menu Principal - CORRIGIDO: adicionado role="list" -->
+                <ul class="navbar-nav me-auto" role="list">
                     {% if current_user.is_authenticated %}
                         <!-- DASHBOARD - CORRIGIDO COM LINKS CONDICIONAIS -->
                         <li class="nav-item">
@@ -106,7 +120,6 @@
                                     <i class="bi bi-arrow-left-right"></i> Movimentações
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <!-- Licenças removido do menu admin -->
                             </ul>
                         </li>
                         {% endif %}
@@ -179,8 +192,8 @@
                     {% endif %}
                 </ul>
                 
-                <!-- Menu do Usuário -->
-                <ul class="navbar-nav">
+                <!-- Menu do Usuário - CORRIGIDO: adicionado role="list" -->
+                <ul class="navbar-nav" role="list">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -261,7 +274,8 @@
                             {% endif %}
                             <span>{{ message }}</span>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <!-- Botão de fechar alerta - CORRIGIDO: adicionado aria-label e title -->
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar" title="Fechar mensagem"></button>
                     </div>
                 {% endfor %}
             {% endif %}
