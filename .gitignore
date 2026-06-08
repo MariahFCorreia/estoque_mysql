@@ -1,0 +1,42 @@
+# Ambiente virtual Python
+venv/
+.venv/
+env/
+
+# Variáveis de ambiente e configurações sensíveis
+.env
+config.py
+
+# Backups e arquivos gerados
+backup_auto.py
+backup_codigo_$(date)
+backup_codigo_*.tar.gz
+backup_codigo.zip
+backup_estoque_*.sql
+backup.bat
+
+# Banco de dados e SQL sensível
+*.sql
+create_mysql_user.sql
+licenca_tables.sql
+
+# Atalhos do Windows
+*.lnk
+
+# Arquivos de licença/config sensíveis
+licenca_config.py
+licenca_routes.py
+migrate_mysql.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# PyEnv
+pyvenv.cfg
+
+# Logs
+*.log
